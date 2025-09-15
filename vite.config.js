@@ -1,8 +1,8 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
-// ⚡ Configuration spéciale GitHub Pages
+// ⚡ Configuration spéciale pour GitHub Pages
 export default defineConfig({
   plugins: [react()],
-  base: '/lotostats-react/', // doit être EXACTEMENT le nom de ton repo GitHub
-})
+  base: "/lotostats-react/", // 👈 doit correspondre EXACTEMENT au nom de ton repo GitHub
+});
