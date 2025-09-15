@@ -29,7 +29,7 @@ function extractFromRecord(rec) {
 
 export async function getDraws() {
   try {
-    const resp = await fetch("/src/data/loto.json");
+    const resp = await fetch("/lotostats-react/loto.json");
     if (!resp.ok) throw new Error(`Erreur HTTP ${resp.status}`);
     const raw = await resp.json();
     let records = [];
