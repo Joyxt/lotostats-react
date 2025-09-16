@@ -66,7 +66,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center bg-gradient-to-br from-[#a286f7] to-[#92bcf7] p-6">
+    <div className="min-h-screen flex flex-col items-center bg-gradient-to-br from-purple-400 via-indigo-400 to-blue-400 p-6">
       {/* Header */}
       <header className="w-full max-w-4xl text-center mt-6">
         <div className="flex items-center justify-center gap-3">
