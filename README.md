@@ -1,12 +1,102 @@
-# React + Vite
+🎉 LotoStats
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Une application React + Vite + Tailwind qui affiche des statistiques sur les tirages du Loto.
+Elle permet de visualiser les numéros les plus sortis, les plus rares, et propose une combinaison générée aléatoirement basée sur les statistiques.
 
-Currently, two official plugins are available:
+🚀 Fonctionnalités
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+📊 Top 5 numéros les plus sortis (y compris le numéro chance).
 
-## Expanding the ESLint configuration
+🔍 Top 5 numéros les plus rares (y compris le numéro chance).
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+✨ Proposition aléatoire :
+Génère à chaque clic une combinaison de 5 numéros parmi les plus fréquents + 1 numéro chance parmi les plus fréquents.
+
+📈 Graphique interactif :
+En cliquant sur un numéro, une courbe affiche son évolution par année ou par mois.
+
+🎨 Interface soignée avec TailwindCSS, animations avec Framer Motion.
+
+🌐 Déployée sur GitHub Pages.
+
+📂 Structure du projet
+lotostats-react/
+├── public/              # fichiers statiques (favicon, etc.)
+├── src/
+│   ├── components/      # composants React (UI)
+│   │   ├── NumberBall.jsx
+│   │   ├── NumberModal.jsx
+│   │   ├── RandomSuggestion.jsx
+│   │   ├── StatsSection.jsx
+│   ├── services/
+│   │   └── lotoApi.js   # traitement des données loto
+│   ├── App.jsx          # composant principal
+│   └── main.jsx         # point d’entrée React
+├── package.json
+├── vite.config.js
+├── postcss.config.js
+├── tailwind.config.js
+└── README.md            # documentation
+
+🛠️ Installation & lancement
+1. Cloner le dépôt
+git clone https://github.com/Joyxt/lotostats-react.git
+cd lotostats-react
+
+2. Installer les dépendances
+npm install
+
+3. Lancer en local
+npm run dev
+
+
+👉 L’app est disponible sur : http://localhost:5173
+
+🌐 Déploiement sur GitHub Pages
+
+Ajouter la dépendance :
+
+npm install gh-pages --save-dev
+
+
+Vérifier que dans package.json tu as bien :
+
+"homepage": "https://joyxt.github.io/lotostats-react",
+"scripts": {
+  "dev": "vite",
+  "build": "vite build",
+  "preview": "vite preview",
+  "deploy": "gh-pages -d dist"
+}
+
+
+Construire et déployer :
+
+npm run build
+npm run deploy
+
+
+👉 L’app sera disponible ici :
+🔗 https://joyxt.github.io/lotostats-react/
+
+📊 Données
+
+L’application utilise un fichier JSON contenant l’historique des tirages du Loto.
+Chaque tirage contient les boules principales, le numéro chance et la date.
+
+Exemple :
+
+{
+  "date_de_tirage": "2025-09-13",
+  "boule_1": 29,
+  "boule_2": 31,
+  "boule_3": 6,
+  "boule_4": 41,
+  "boule_5": 28,
+  "numero_chance": 10
+}
+
+❤️ Auteur
+
+Projet réalisé par Skalito avec React, Vite, Tailwind et Recharts.
+Déployé grâce à GitHub Pages.
