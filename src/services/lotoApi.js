@@ -1,56 +1,78 @@
 // src/services/lotoApi.js
-function toIntSafe(v) {
-  if (v === null || v === undefined) return null;
-  const s = String(v).trim();
-  if (!s.length) return null;
-  const digits = s.replace(/[^\d-]/g, "");
-  const n = parseInt(digits, 10);
-  return Number.isNaN(n) ? null : n;
-}
+// Lecture propre de loto.json au format OpenData FDJ (agrall)
 
-function extractFromRecord(rec) {
-  const r = rec && rec.fields ? rec.fields : rec;
-  let numbers = [];
-  if (Array.isArray(r.numbers) && r.numbers.length) numbers = r.numbers.map(toIntSafe).filter(x => x !== null);
-  else if (Array.isArray(r.numeros) && r.numeros.length) numbers = r.numeros.map(toIntSafe).filter(x => x !== null);
-  else {
-    const b1 = toIntSafe(r.boule_1 ?? r.boule1);
-    const b2 = toIntSafe(r.boule_2 ?? r.boule2);
-    const b3 = toIntSafe(r.boule_3 ?? r.boule3);
-    const b4 = toIntSafe(r.boule_4 ?? r.boule4);
-    const b5 = toIntSafe(r.boule_5 ?? r.boule5);
-    numbers = [b1,b2,b3,b4,b5].filter(x => x !== null);
+export async function fetchLotoData() {
+  const base = import.meta.env.BASE_URL || "/";
+  const url = `${base}loto.json`;
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Erreur réseau : ${res.status} (${url})`);
   }
-  const maybeChance = r.numero_chance ?? r.luckyNumber ?? r.chance ?? null;
-  const chance = toIntSafe(maybeChance);
-  const date = r.date_de_tirage ?? r.date ?? null;
-  return { date, numbers, chance };
-}
 
-export async function getDraws() {
-  try {
-    const resp = await fetch("/lotostats-react/loto.json");
-    if (!resp.ok) throw new Error(`Erreur HTTP ${resp.status}`);
-    const raw = await resp.json();
-    let records = [];
-    if (Array.isArray(raw)) records = raw;
-    else if (raw && Array.isArray(raw.records)) records = raw.records;
-    else records = [raw];
+  const raw = await res.json();
 
-    const draws = records.map(rec => {
-      const { date, numbers, chance } = extractFromRecord(rec);
-      if (!Array.isArray(numbers) || numbers.length === 0) return null;
-      return { date: date || null, numbers, chance: chance === null ? null : chance };
-    }).filter(Boolean);
-
-    draws.sort((a,b) => {
-      if (!a.date || !b.date) return 0;
-      return new Date(b.date) - new Date(a.date);
-    });
-
-    return draws;
-  } catch (err) {
-    console.error("lotoApi.getDraws erreur:", err);
-    return [];
+  if (!raw.records || !Array.isArray(raw.records)) {
+    throw new Error("Format de loto.json invalide : pas de records");
   }
+
+  const ballCounts = {};   // total par boule
+  const chanceCounts = {}; // total par numéro chance
+
+  const ballTimeline = {};   // { num: { "2025-09": 3, "2025-10": 1, ... } }
+  const chanceTimeline = {}; // idem pour les numéros chance
+
+  const inc = (obj, key) => {
+    obj[key] = (obj[key] || 0) + 1;
+  };
+
+  for (const rec of raw.records) {
+    if (!rec.fields) continue;
+
+    const dateStr = rec.fields.date_de_tirage;
+    const ym = dateStr ? dateStr.slice(0, 7) : "unknown"; // "YYYY-MM"
+
+    // Boules 1 à 5
+    for (let i = 1; i <= 5; i++) {
+      const val = Number(rec.fields[`boule_${i}`]);
+      if (Number.isInteger(val)) {
+        inc(ballCounts, val);
+
+        if (!ballTimeline[val]) ballTimeline[val] = {};
+        inc(ballTimeline[val], ym);
+      }
+    }
+
+    // Numéro chance
+    const chance = Number(rec.fields["numero_chance"]);
+    if (Number.isInteger(chance)) {
+      inc(chanceCounts, chance);
+
+      if (!chanceTimeline[chance]) chanceTimeline[chance] = {};
+      inc(chanceTimeline[chance], ym);
+    }
+  }
+
+  // Transformer en tableaux triés
+  const ballArray = Object.keys(ballCounts).map((n) => ({
+    num: Number(n),
+    count: ballCounts[n],
+    timeline: ballTimeline[n] || {},
+  }));
+  ballArray.sort((a, b) => b.count - a.count || a.num - b.num);
+
+  const chanceArray = Object.keys(chanceCounts).map((n) => ({
+    num: Number(n),
+    count: chanceCounts[n],
+    timeline: chanceTimeline[n] || {},
+  }));
+  chanceArray.sort((a, b) => b.count - a.count || a.num - b.num);
+
+  return {
+    mostFrequent: ballArray,
+    rarest: [...ballArray]
+      .sort((a, b) => a.count - b.count || a.num - b.num)
+      .slice(0, 5),
+    mostFrequentChances: chanceArray,
+  };
 }

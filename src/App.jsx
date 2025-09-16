@@ -1,27 +1,26 @@
+// src/App.jsx
 import React, { useEffect, useState } from "react";
-import StatsWrapper from "./components/StatsWrapper";
+import StatsWrapper from "./components/StatsSection";
+import RandomSuggestion from "./components/RandomSuggestion";
 import NumberModal from "./components/NumberModal";
-import { getDraws } from "./services/lotoApi";
+import { fetchLotoData } from "./services/lotoApi";
+import "./index.css";
 
 export default function App() {
-  const [draws, setDraws] = useState([]);
-  const [topNumbers, setTopNumbers] = useState([]);
-  const [rareNumbers, setRareNumbers] = useState([]);
-  const [lastLucky, setLastLucky] = useState(null);
-  const [selected, setSelected] = useState(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [selectedNumber, setSelectedNumber] = useState(null);
+  const [selectedIsChance, setSelectedIsChance] = useState(false);
 
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
-        const data = await getDraws();
-        // data doit être un tableau de {date, numbers: [], chance}
-        setDraws(Array.isArray(data) ? data : []);
-        computeRanks(Array.isArray(data) ? data : []);
+        const result = await fetchLotoData();
+        setData(result);
       } catch (err) {
-        console.error("Erreur dans load():", err);
-        setDraws([]);
+        console.error("Erreur chargement loto.json :", err);
+        setData(null);
       } finally {
         setLoading(false);
       }
@@ -29,82 +28,80 @@ export default function App() {
     load();
   }, []);
 
-  function computeRanks(data) {
-    const counts = {};
-    const chanceCounts = {};
-
-    data.forEach((d) => {
-      if (!d || !Array.isArray(d.numbers)) return;
-      d.numbers.forEach((n) => {
-        if (typeof n === "number" && !Number.isNaN(n)) counts[n] = (counts[n] || 0) + 1;
-      });
-      if (d.chance != null) {
-        const c = Number(d.chance);
-        if (!Number.isNaN(c)) chanceCounts[c] = (chanceCounts[c] || 0) + 1;
-      }
-    });
-
-    // transformer en tableau trié
-    const sorted = Object.entries(counts)
-      .map(([num, count]) => ({ num: Number(num), count }))
-      .sort((a, b) => b.count - a.count);
-
-    const sortedChance = Object.entries(chanceCounts)
-      .map(([num, count]) => ({ num: Number(num), count }))
-      .sort((a, b) => b.count - a.count);
-
-    // top 5 + chance most frequent (if exist)
-    const top5 = sorted.slice(0, 5).map((x) => ({ ...x, isChance: false }));
-    if (sortedChance.length > 0) top5.push({ ...sortedChance[0], isChance: true });
-
-    // rarest 5 (lowest counts) + chance least frequent
-    const rare5 = sorted.slice(-5).map((x) => ({ ...x, isChance: false }));
-    if (sortedChance.length > 0) rare5.push({ ...sortedChance[sortedChance.length - 1], isChance: true });
-
-    setTopNumbers(top5);
-    setRareNumbers(rare5);
-
-    // dernier numéro chance (tirage le plus récent d'après date si possible)
-    const withDate = data.filter(d => d && d.date).slice();
-    if (withDate.length) {
-      withDate.sort((a, b) => new Date(b.date) - new Date(a.date));
-      setLastLucky(withDate[0].chance ?? null);
-    } else {
-      setLastLucky(null);
-    }
+  // Safety: si pas de data encore, on affiche loader / message
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#a286f7] to-[#86aff7]">
+        <p className="text-lg font-semibold">⏳ Chargement des données...</p>
+      </div>
+    );
   }
 
-  const handleClick = (num, isChance = false) => {
-    setSelected({ num, isChance });
+  if (!data) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#a286f7] to-[#86aff7]">
+        <p className="text-lg font-semibold text-red-600">❌ Impossible de charger les données.</p>
+      </div>
+    );
+  }
+
+  // Préparer les listes
+  const allBalls = data.mostFrequent || []; // tableau complet trié desc {num,count,timeline}
+  const top5 = allBalls.slice(0, 5);
+  const chanceList = data.mostFrequentChances || []; // trié desc
+  const chanceMost = chanceList.length ? chanceList[0] : null; // top chance
+  const chanceLeast = chanceList.length ? chanceList[chanceList.length - 1] : null; // chance la moins sortie
+
+  // Construire arrays affichés (5 boules + boule chance à la fin)
+  const top5WithChance = [...top5];
+  if (chanceMost) top5WithChance.push({ ...chanceMost, isChance: true });
+
+  const rare5 = data.rarest || [];
+  const rare5WithChance = [...rare5];
+  if (chanceLeast) rare5WithChance.push({ ...chanceLeast, isChance: true });
+
+  const handleNumberClick = (num, isChance = false) => {
+    setSelectedNumber(num);
+    setSelectedIsChance(!!isChance);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-purple-300 to-blue-300 p-6 flex flex-col items-center">
-      <h1 className="text-3xl font-bold mb-6 flex items-center gap-3">
-        <img src="https://cdn-icons-png.flaticon.com/512/14284/14284630.png" alt="rocket" className="w-8 h-8" />
-        LotoStats
-      </h1>
-
-      {loading ? (
-        <div className="py-12 text-lg">⏳ Chargement des tirages…</div>
-      ) : (
-        <div className="w-full max-w-4xl">
-          <StatsWrapper mostFrequent={topNumbers} rarest={rareNumbers} onNumberClick={handleClick} />
+    <div className="min-h-screen flex flex-col items-center bg-gradient-to-br from-[#a286f7] to-[#92bcf7] p-6">
+      {/* Header */}
+      <header className="w-full max-w-4xl text-center mt-6">
+        <div className="flex items-center justify-center gap-3">
+          <span style={{ fontSize: 28 }}>📈</span>
+          <h1 className="text-3xl font-extrabold">LotoStats</h1>
         </div>
-      )}
+      </header>
 
-      <footer className="mt-10 text-gray-700 text-sm">
-        Made with <span className="text-red-500">❤️</span> by <span className="font-semibold">Skalito</span>
-      </footer>
-
-      {selected && (
-        <NumberModal
-          number={selected.num}
-          isChance={selected.isChance}
-          draws={draws}
-          onClose={() => setSelected(null)}
+      {/* Main */}
+      <main className="w-full max-w-4xl mt-8 mb-8">
+        <StatsWrapper
+          mostFrequent={top5WithChance}
+          rarest={rare5WithChance}
+          onNumberClick={handleNumberClick}
         />
-      )}
+
+        <div className="mt-8">
+          <RandomSuggestion
+            top10Numbers={allBalls.slice(0, 10).map((n) => n.num)}
+            top5Chances={chanceList.slice(0, 5).map((c) => c.num)}
+          />
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="mb-8 text-sm text-gray-700">Made with ❤️ by Skalito</footer>
+
+      {/* Modal */}
+      <NumberModal
+        isOpen={selectedNumber !== null}
+        onClose={() => setSelectedNumber(null)}
+        number={selectedNumber}
+        isChance={selectedIsChance}
+        draws={data}
+      />
     </div>
   );
 }

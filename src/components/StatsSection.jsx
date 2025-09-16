@@ -23,7 +23,10 @@ function InnerSection({ title, numbers, onNumberClick }) {
             className="flex flex-col items-center cursor-pointer"
             onClick={() => onNumberClick(item.num, !!item.isChance)}
           >
+            {/* Boule */}
             <NumberBall number={item.num} isChance={!!item.isChance} />
+
+            {/* Nombre de sorties */}
             <span className="text-xs text-gray-700 mt-1">{item.count}x</span>
           </motion.div>
         ))}
